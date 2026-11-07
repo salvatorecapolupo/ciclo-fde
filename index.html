@@ -14,7 +14,7 @@ button{background:#2a364f;color:#fff;border:1px solid var(--bd);padding:6px 12px
 button.on{background:var(--D)}button.main{background:var(--E);color:#000}
 .banner{padding:10px 14px;display:flex;align-items:center;gap:14px;font-family:var(--mono)}
 .badge{font-weight:bold;padding:4px 10px;border-radius:4px;font-size:.85rem;min-width:84px;text-align:center}
-.FETCH{background:var(--F);color:#000}.DECODE{background:var(--D);color:#fff}.EXECUTE{background:var(--E);color:#000}.START{background:#475569}
+.FETCH{background:#22c55e;color:#000}.DECODE{background:#ef4444;color:#fff}.EXECUTE{background:#3b82f6;color:#fff}.START{background:#475569}
 #desc{font-size:1.35rem;font-weight:700;color:#7dd3fc;flex:1}
 #cnt{color:var(--mut);font-size:.85rem}
 .dash{display:grid;grid-template-columns:260px 1fr 250px;gap:8px;flex:1;min-height:0}
@@ -22,25 +22,24 @@ button.on{background:var(--D)}button.main{background:var(--E);color:#000}
 .ttl{font-size:.8rem;color:var(--mut);font-weight:bold}
 .list{display:flex;flex-direction:column;gap:4px;font-family:var(--mono);font-size:.85rem}
 .line{display:grid;grid-template-columns:44px 52px 1fr;padding:4px 6px;border-radius:4px;background:#0f172a;border:1px solid transparent}
-.line.cur{border-color:var(--F);background:rgba(245,158,11,.2);font-weight:bold}
-.line.rd{outline:2px solid #facc15}
+.line.cur{border-color:#e2e8f0;background:rgba(226,232,240,.15);font-weight:bold}
+.line.rd{outline:2px solid #22c55e}
 .line .a{color:var(--mut)}.line .r{color:#facc15}.line .m{color:#38bdf8;font-weight:bold}
 .regs{display:grid;grid-template-columns:1fr 1fr;gap:4px;font-family:var(--mono)}
 .reg{background:#0f172a;border:1px solid var(--bd);padding:4px 8px;border-radius:4px}
 .reg .l{font-size:.7rem;color:var(--mut)}.reg .v{font-size:1.05rem;font-weight:bold;color:#64748b;text-align:right}
-.reg.hot{border-color:#facc15;background:rgba(250,204,21,.18)}.reg.hot .v{color:#facc15}
+.reg.hot .v,.reg.hot .l{color:#0b0f19}
 .reg.seen .v{color:#e2e8f0}
 .tw{flex:1;overflow-y:auto}
 table{width:100%;border-collapse:collapse;font-family:var(--mono);font-size:.85rem;text-align:center}
 th{position:sticky;top:0;background:var(--bg);padding:5px;color:var(--mut);z-index:2}
 td{padding:5px;border-bottom:1px solid var(--bd);color:#64748b}
-td.chg{color:#000;background:#facc15;font-weight:bold}
+td.chg{color:#0b0f19;font-weight:bold}td.now{outline:3px solid #fff;outline-offset:-3px}
 td.k{font-weight:bold}td.d{text-align:left;padding-left:8px;color:#cbd5e1}
-tr.new td{border-top:2px solid #475569}
-tr.now td.d{color:#7dd3fc;font-weight:bold}
+tr.new td{border-top:3px solid #475569}td.d{vertical-align:top}.op{padding:3px 6px;border-radius:3px;margin-bottom:3px;color:#0b0f19;font-weight:bold}
 .mem{display:flex;flex-direction:column;gap:4px;font-family:var(--mono);font-size:.85rem}
 .row{display:grid;grid-template-columns:80px 56px 1fr;align-items:center;gap:6px;background:#0f172a;padding:4px 8px;border-radius:4px;border:1px solid var(--bd)}
-.row.rd{border-color:#facc15;background:rgba(250,204,21,.15)}.row.wr{border-color:var(--E);background:rgba(16,185,129,.25)}
+.row.rd{border-color:#60a5fa;background:rgba(96,165,250,.25)}.row.wr{border-color:#3b82f6;background:rgba(59,130,246,.5)}
 .row input{width:56px;background:var(--bg);border:1px solid var(--bd);color:#fff;text-align:right;padding:2px 4px;border-radius:3px;font-family:var(--mono)}
 .row b{text-align:right;color:#facc15}
 .leg{font-size:.8rem;font-family:var(--mono);color:var(--mut);line-height:1.5}
@@ -72,7 +71,7 @@ tr.now td.d{color:#7dd3fc;font-weight:bold}
     <div class="regs" id="regs"></div>
   </div>
   <div class="card">
-    <div class="ttl">Storico passo-passo (il giallo è ciò che cambia)</div>
+    <div class="ttl">Una riga per fase · il colore indica il micro-passo</div>
     <div class="tw"><table>
       <thead><tr><th>STEP</th><th>FASE</th><th>MAR</th><th>MDR</th><th>IR</th><th>PC</th><th>OP</th><th>OPR</th><th>ACC</th><th style="text-align:left">Operazione</th></tr></thead>
       <tbody id="tb"></tbody>
@@ -93,6 +92,9 @@ const EX=[
  {pc:200,prog:[[200,1910],[201,4911],[202,5204],[203,3911],[204,2912],[205,9000]],data:[{a:910,v:12},{a:911,v:5},{a:912,v:0}]}
 ];
 const COLS=['MAR','MDR','IR','PC','OP','OPR','ACC'];
+const PH={FETCH:'#22c55e',DECODE:'#ef4444',EXECUTE:'#3b82f6'};
+const SHADES={FETCH:['#bbf7d0','#86efac','#4ade80','#22c55e'],DECODE:['#fecaca','#f87171'],EXECUTE:['#bfdbfe','#93c5fd','#60a5fa']};
+const SH=t=>SHADES[t.ph][t.k];
 let cur=0,cs=0,steps=[],init0={},timer=null;
 
 //<core>
@@ -102,7 +104,8 @@ function compute(ex,vals){
   const initMem={...mem};
   const st={PC:ex.pc,MAR:null,MDR:null,IR:null,OP:null,OPR:null,ACC:null};
   const out=[];let inst=ex.pc,first=true;
-  const push=(ph,chg,desc,x={})=>{out.push({ph,chg,desc,st:{...st},mem:{...mem},inst,first,...x});first=false;};
+  let g=-1,k=0,lp=null;
+  const push=(ph,chg,desc,x={})=>{if(ph!==lp){g++;k=0;lp=ph;}else k++;out.push({ph,chg,desc,st:{...st},mem:{...mem},inst,first,g,k,...x});first=false;};
   for(let n=0;n<50;n++){
     first=true;inst=st.PC;
     st.MAR=st.PC;           push('FETCH',['MAR'],`MAR ← PC  (MAR = ${st.MAR})`);
@@ -150,7 +153,8 @@ function render(){
   document.getElementById('cnt').textContent=`${cs}/${steps.length}`;
   COLS.forEach(c=>{
     document.getElementById('v'+c).textContent=st[c]??'-';
-    document.getElementById('r'+c).className='reg'+(s&&s.chg.includes(c)?' hot':(st[c]!==null?' seen':''));
+    const rb=document.getElementById('r'+c),hot=s&&s.chg.includes(c);
+    rb.className='reg'+(hot?' hot':(st[c]!==null?' seen':''));rb.style.background=hot?SH(s):'';rb.style.borderColor=hot?'#fff':'';
   });
   ex.prog.forEach(([a])=>{const el=document.getElementById('L'+a);
     el.className='line'+(s&&s.inst===a?' cur':'')+(s&&s.rdI===a?' rd':'');});
@@ -158,13 +162,15 @@ function render(){
     document.getElementById('lv'+d.a).textContent=mem[d.a]??0;
     document.getElementById('M'+d.a).className='row'+(s&&s.rd===d.a?' rd':'')+(s&&s.wr===d.a?' wr':'');
   });
-  let h='';
-  for(let i=0;i<cs;i++){
-    const t=steps[i],now=i===cs-1;
-    h+=`<tr class="${t.first?'new':''} ${now?'now':''}"><td class="k">${i+1}</td><td class="k">${t.ph}</td>`+
-      COLS.map(c=>`<td class="${t.chg.includes(c)?'chg':''}">${t.st[c]??''}</td>`).join('')+
-      `<td class="d">${t.desc}</td></tr>`;
-  }
+  let h='',gi=-1;const rows=[];
+  for(let i=0;i<cs;i++){const t=steps[i];if(t.g!==gi){gi=t.g;rows.push({i0:i,list:[]});}rows[rows.length-1].list.push(t);}
+  rows.forEach((r,n)=>{
+    const f=r.list[0],last=r.list[r.list.length-1],prev=r.i0>0?steps[r.i0-1].st:st0,isLast=n===rows.length-1;
+    h+=`<tr class="${f.ph==='FETCH'?'new':''}"><td class="k">${n+1}</td><td class="k" style="background:${PH[f.ph]};color:#0b0f19">${f.ph}</td>`+
+      COLS.map(c=>{const t=r.list.find(x=>x.chg.includes(c));const v=t?t.st[c]:prev[c];
+        return `<td class="${t?'chg':''}${t&&isLast&&t===last?' now':''}" style="${t?'background:'+SH(t):''}">${v??''}</td>`;}).join('')+
+      `<td class="d">${r.list.map(t=>`<div class="op" style="background:${SH(t)}">${t.desc}</div>`).join('')}</td></tr>`;
+  });
   const tb=document.getElementById('tb');tb.innerHTML=h;
   const w=tb.parentElement.parentElement;w.scrollTop=w.scrollHeight;
 }
