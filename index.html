@@ -94,7 +94,7 @@ const EX=[
 const COLS=['MAR','MDR','IR','PC','OP','OPR','ACC'];
 const PH={FETCH:'#22c55e',DECODE:'#ef4444',EXECUTE:'#3b82f6'};
 const SHADES={FETCH:['#bbf7d0','#86efac','#4ade80','#22c55e'],DECODE:['#fecaca','#f87171'],EXECUTE:['#bfdbfe','#93c5fd','#60a5fa']};
-const SH=t=>SHADES[t.ph][t.k];
+const SH=t=>{const a=SHADES[t.ph];return a[Math.min(t.k,a.length-1)];};
 let cur=0,cs=0,steps=[],init0={},timer=null;
 
 //<core>
@@ -103,11 +103,12 @@ function compute(ex,vals){
   ex.data.forEach(d=>mem[d.a]=vals&&vals[d.a]!==undefined?vals[d.a]:d.v);
   const initMem={...mem};
   const st={PC:ex.pc,MAR:null,MDR:null,IR:null,OP:null,OPR:null,ACC:null};
-  const out=[];let inst=ex.pc,first=true;
+  const out=[];let inst=ex.pc;
   let g=-1,k=0,lp=null;
-  const push=(ph,chg,desc,x={})=>{if(ph!==lp){g++;k=0;lp=ph;}else k++;out.push({ph,chg,desc,st:{...st},mem:{...mem},inst,first,g,k,...x});first=false;};
+  const push=(ph,chg,desc,x={})=>{if(ph!==lp){g++;k=0;lp=ph;}else k++;out.push({ph,chg,desc,st:{...st},mem:{...mem},inst,g,k,...x});};
   for(let n=0;n<50;n++){
-    first=true;inst=st.PC;
+    inst=st.PC;
+    st.OP=null;st.OPR=null;  // il decoder riparte da zero: niente OP/OPR della istruzione precedente
     st.MAR=st.PC;           push('FETCH',['MAR'],`MAR ← PC  (MAR = ${st.MAR})`);
     st.MDR=mem[st.MAR]??0;  push('FETCH',['MDR'],`MDR ← M[MAR] = M[${st.MAR}]  (MDR = ${st.MDR})`,{rdI:st.MAR});
     st.IR=st.MDR;           push('FETCH',['IR'],`IR ← MDR  (IR = ${st.IR})`);
@@ -122,7 +123,7 @@ function compute(ex,vals){
     if(op===5){st.PC=x;push('EXECUTE',['PC'],`JUMP: PC ← operando  (PC = ${x})`);continue;}
     st.MAR=x;push('EXECUTE',['MAR'],`MAR ← operando  (MAR = ${x})`);
     if(op===2){
-      st.MDR=st.ACC;push('EXECUTE',['MDR'],`MDR ← ACC  (MDR = ${st.MDR})`);
+      st.MDR=st.ACC??0;push('EXECUTE',['MDR'],`MDR ← ACC  (MDR = ${st.MDR})`);
       mem[st.MAR]=st.MDR;push('EXECUTE',[],`M[MAR] ← MDR: M[${st.MAR}] = ${st.MDR}`,{wr:st.MAR});
       continue;
     }
@@ -137,14 +138,14 @@ function compute(ex,vals){
 //</core>
 
 let st0;
-function vals(){const v={};EX[cur].data.forEach(d=>{const e=document.getElementById('in'+d.a);if(e)v[d.a]=Number(e.value);});return v;}
+function vals(){const v={};EX[cur].data.forEach(d=>{const e=document.getElementById('in'+d.a);if(e)v[d.a]=Number(e.value)||0;});return v;}
 function recompute(){const r=compute(EX[cur],vals());steps=r.out;init0=r.initMem;st0=r.st0;cs=Math.min(cs,steps.length);}
 function build(){
   const ex=EX[cur];
   document.getElementById('prog').innerHTML=ex.prog.map(([a,v])=>{const o=Math.floor(v/1000),x=v%1000;
     return `<div class="line" id="L${a}"><span class="a">${a}:</span><span class="r">${v}</span><span class="m">${NAMES[o]} ${o===9?'':x}</span></div>`;}).join('');
   document.getElementById('regs').innerHTML=COLS.map(c=>`<div class="reg" id="r${c}"><div class="l">${c}</div><div class="v" id="v${c}">-</div></div>`).join('');
-  document.getElementById('mem').innerHTML=ex.data.map(d=>`<div class="row" id="M${d.a}"><span>M[${d.a}]</span><input type="number" id="in${d.a}" value="${d.v}" oninput="stopPlay();recompute();render()"><b id="lv${d.a}"></b></div>`).join('');
+  document.getElementById('mem').innerHTML=ex.data.map(d=>`<div class="row" id="M${d.a}"><span>M[${d.a}]</span><input type="number" id="in${d.a}" value="${d.v}" oninput="stopPlay();cs=0;recompute();render()"><b id="lv${d.a}"></b></div>`).join('');
 }
 function render(){
   const ex=EX[cur],s=cs?steps[cs-1]:null,st=s?s.st:st0,mem=s?s.mem:init0;
@@ -165,9 +166,9 @@ function render(){
   let h='',gi=-1;const rows=[];
   for(let i=0;i<cs;i++){const t=steps[i];if(t.g!==gi){gi=t.g;rows.push({i0:i,list:[]});}rows[rows.length-1].list.push(t);}
   rows.forEach((r,n)=>{
-    const f=r.list[0],last=r.list[r.list.length-1],prev=r.i0>0?steps[r.i0-1].st:st0,isLast=n===rows.length-1;
+    const f=r.list[0],last=r.list[r.list.length-1],isLast=n===rows.length-1;
     h+=`<tr class="${f.ph==='FETCH'?'new':''}"><td class="k">${n+1}</td><td class="k" style="background:${PH[f.ph]};color:#0b0f19">${f.ph}</td>`+
-      COLS.map(c=>{const t=r.list.find(x=>x.chg.includes(c));const v=t?t.st[c]:prev[c];
+      COLS.map(c=>{const t=r.list.find(x=>x.chg.includes(c));const v=t?t.st[c]:f.st[c];
         return `<td class="${t?'chg':''}${t&&isLast&&t===last?' now':''}" style="${t?'background:'+SH(t):''}">${v??''}</td>`;}).join('')+
       `<td class="d">${r.list.map(t=>`<div class="op" style="background:${SH(t)}">${t.desc}</div>`).join('')}</td></tr>`;
   });
@@ -184,6 +185,7 @@ function togglePlay(){
 }
 function stopPlay(){clearInterval(timer);timer=null;document.getElementById('play').textContent='▶ Play';}
 function load(i){stopPlay();cur=i;cs=0;document.getElementById('b0').className=i===0?'on':'';document.getElementById('b1').className=i===1?'on':'';build();recompute();render();}
+document.addEventListener('click',e=>{if(e.target.tagName==='BUTTON')e.target.blur();}); // evita doppio avanzamento con Spazio
 document.addEventListener('keydown',e=>{if(e.target.tagName==='INPUT')return;
   if(e.key==='ArrowRight'||e.key===' '){e.preventDefault();go(1);}
   if(e.key==='ArrowLeft'){e.preventDefault();go(-1);}});
