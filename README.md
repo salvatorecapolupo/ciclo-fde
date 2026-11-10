@@ -1,6 +1,8 @@
 # Il ciclo macchina (sistemi e reti)
 ## 1. Il modello a due fasi
 
+Simulatore: [https://salvatorecapolupo.github.io/ciclo-fde/](https://salvatorecapolupo.github.io/ciclo-fde/)
+
 Il microprocessore è il nucleo di una **macchina di Von Neumann**: programma e dati stanno nella stessa memoria, ogni istruzione ha un indirizzo e un contatore di istruzioni (**PC**) percorre gli indirizzi in sequenza, a meno che l'istruzione stessa non imponga un salto. È un'architettura **SISD** (una istruzione alla volta, un flusso di dati).
 
 Ogni istruzione viene eseguita in due fasi:
