@@ -169,7 +169,9 @@ function render(){
     const f=r.list[0],last=r.list[r.list.length-1],isLast=n===rows.length-1;
     h+=`<tr class="${f.ph==='FETCH'?'new':''}"><td class="k">${n+1}</td><td class="k" style="background:${PH[f.ph]};color:#0b0f19">${f.ph}</td>`+
       COLS.map(c=>{const t=r.list.find(x=>x.chg.includes(c));const v=t?t.st[c]:f.st[c];
-        return `<td class="${t?'chg':''}${t&&isLast&&t===last?' now':''}" style="${t?'background:'+SH(t):''}">${v??''}</td>`;}).join('')+
+        const ti=t?steps.indexOf(t):-1,old=ti>=0?(ti>0?steps[ti-1].st[c]:st0[c]):null,
+          o=(t&&old!==null&&old!==v)?`<small style="opacity:.65;font-weight:normal">${old}→</small>`:'';
+        return `<td class="${t?'chg':''}${t&&isLast&&t===last?' now':''}" style="${t?'background:'+SH(t):''}">${o}${v??''}</td>`;}).join('')+
       `<td class="d">${r.list.map(t=>`<div class="op" style="background:${SH(t)}">${t.desc}</div>`).join('')}</td></tr>`;
   });
   const tb=document.getElementById('tb');tb.innerHTML=h;
